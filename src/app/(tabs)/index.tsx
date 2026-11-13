@@ -3,23 +3,32 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 import { useAppDatabase } from '../../context/DatabaseContext';
 import { formatMWK, formatShortDate } from '../../utils/format';
 import AddTransactionModal from '../../components/AddTransactionModal';
+import EditTransactionModal from '../../components/EditTransactionModal';
 import SyncStatusBadge from '../../components/SyncStatusBadge';
-import { TransactionType } from '../../types';
+import { Transaction, TransactionType } from '../../types';
 
 export default function DailyCashScreen() {
-  const { cashSummary, recentTransactions, addTransaction } = useAppDatabase();
+  const {
+    cashSummary,
+    recentTransactions,
+    addTransaction,
+    editTransaction,
+    removeTransaction,
+  } = useAppDatabase();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<TransactionType>('IN');
+  const [showBalance, setShowBalance] = useState(true);
+  const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
   const openModal = (type: TransactionType) => {
     setModalType(type);
@@ -50,17 +59,68 @@ export default function DailyCashScreen() {
         <SyncStatusBadge />
       </View>
 
-      {/* Hero Till Balance Card */}
+      {/* Redesigned Modern Glass-Fintech Till Card */}
       <View style={styles.heroCard}>
-        <Text style={styles.heroLabel}>Total Cash in Hand (Till)</Text>
-        <Text style={[styles.heroAmount, cashSummary.balance < 0 && { color: COLORS.cashOut }]}>
-          {formatMWK(cashSummary.balance)}
-        </Text>
-        <View style={styles.todayPill}>
-          <Text style={styles.todayText}>
-            Today: {cashSummary.todayBalance >= 0 ? '+' : ''}
-            {formatMWK(cashSummary.todayBalance)}
+        {/* Top Row: Active Till pill & Eye toggle */}
+        <View style={styles.heroTopRow}>
+          <View style={styles.activePill}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.activePillText}>Active Till</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.eyeBtn}
+            onPress={() => setShowBalance(!showBalance)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={showBalance ? 'eye-outline' : 'eye-off-outline'}
+              size={18}
+              color={COLORS.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Amount */}
+        <View style={styles.heroAmountWrap}>
+          <Text style={styles.heroAmountLabel}>Total Cash in Hand</Text>
+          <Text
+            style={[
+              styles.heroAmount,
+              cashSummary.balance < 0 && { color: COLORS.cashOut },
+            ]}
+          >
+            {showBalance ? formatMWK(cashSummary.balance) : 'MWK ••••••'}
           </Text>
+        </View> 
+
+        {/* Bottom Split Sub-Card: Today's Pulse */}
+        <View style={styles.todayPulseContainer}>
+          <View style={styles.pulseItem}>
+            <View style={styles.pulseIconIn}>
+              <Ionicons name="arrow-down" size={13} color={COLORS.cashIn} />
+            </View>
+            <View>
+              <Text style={styles.pulseAmountIn}>
+                {showBalance ? `+${formatMWK(cashSummary.todayIn)}` : '••••'}
+              </Text>
+              <Text style={styles.pulseLabel}>Today In</Text>
+            </View>
+          </View>
+
+          <View style={styles.pulseDivider} />
+
+          <View style={styles.pulseItem}>
+            <View style={styles.pulseIconOut}>
+              <Ionicons name="arrow-up" size={13} color={COLORS.cashOut} />
+            </View>
+            <View>
+              <Text style={styles.pulseAmountOut}>
+                {showBalance ? `-${formatMWK(cashSummary.todayOut)}` : '••••'}
+              </Text>
+              <Text style={styles.pulseLabel}>Today Out</Text>
+            </View>
+          </View>
         </View>
       </View>
 
@@ -108,7 +168,11 @@ export default function DailyCashScreen() {
           renderItem={({ item }) => {
             const isCashIn = item.type === 'IN';
             return (
-              <View style={styles.txRow}>
+              <TouchableOpacity
+                style={styles.txRow}
+                activeOpacity={0.7}
+                onPress={() => setSelectedTx(item)}
+              >
                 <View
                   style={[
                     styles.txIconWrap,
@@ -132,16 +196,19 @@ export default function DailyCashScreen() {
                   <Text style={styles.txTime}>{formatShortDate(item.created_at)}</Text>
                 </View>
 
-                <Text
-                  style={[
-                    styles.txAmount,
-                    { color: isCashIn ? COLORS.cashIn : COLORS.cashOut },
-                  ]}
-                >
-                  {isCashIn ? '+' : '-'}
-                  {formatMWK(item.amount)}
-                </Text>
-              </View>
+                <View style={styles.amountTrailing}>
+                  <Text
+                    style={[
+                      styles.txAmount,
+                      { color: isCashIn ? COLORS.cashIn : COLORS.cashOut },
+                    ]}
+                  >
+                    {isCashIn ? '+' : '-'}
+                    {formatMWK(item.amount)}
+                  </Text>
+                  <Ionicons name="ellipsis-vertical" size={14} color={COLORS.textMuted} style={{ marginTop: 2 }} />
+                </View>
+              </TouchableOpacity>
             );
           }}
           ListEmptyComponent={
@@ -162,6 +229,27 @@ export default function DailyCashScreen() {
         type={modalType}
         onClose={() => setModalVisible(false)}
         onSubmit={handleTransactionSubmit}
+      />
+
+      {/* Edit / Delete Modal */}
+      <EditTransactionModal
+        visible={Boolean(selectedTx)}
+        transaction={selectedTx}
+        onClose={() => setSelectedTx(null)}
+        onSave={async (id, updates) => {
+          try {
+            await editTransaction(id, updates);
+          } catch {
+            Alert.alert('Error', 'Failed to update transaction');
+          }
+        }}
+        onDelete={async (id) => {
+          try {
+            await removeTransaction(id);
+          } catch {
+            Alert.alert('Error', 'Failed to delete transaction');
+          }
+        }}
       />
     </SafeAreaView>
   );
@@ -215,36 +303,127 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: COLORS.bgSecondary,
-    borderRadius: 22,
-    padding: 22,
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(16, 185, 129, 0.28)',
+    marginBottom: 20,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  activePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryGlow,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.primary,
+    marginRight: 6,
+  },
+  activePillText: {
+    color: COLORS.primaryLight,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  eyeBtn: {
+    backgroundColor: COLORS.bgCardHover,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
-    alignItems: 'center',
-    marginBottom: 20,
   },
-  heroLabel: {
+  heroAmountWrap: {
+    alignItems: 'flex-start',
+    marginVertical: 4,
+  },
+  heroAmountLabel: {
     color: COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
   heroAmount: {
     color: COLORS.textPrimary,
     fontSize: 36,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
-  todayPill: {
-    backgroundColor: COLORS.primaryGlow,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 10,
+  todayPulseContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.bgPrimary,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  todayText: {
-    color: COLORS.primaryLight,
+  pulseItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pulseDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: COLORS.border,
+    marginHorizontal: 12,
+  },
+  pulseIconIn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.cashInBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseIconOut: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.cashOutBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pulseAmountIn: {
+    color: COLORS.cashIn,
     fontSize: 13,
+    fontWeight: '800',
+  },
+  pulseAmountOut: {
+    color: COLORS.cashOut,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  pulseLabel: {
+    color: COLORS.textMuted,
+    fontSize: 10,
     fontWeight: '600',
+    marginTop: 1,
   },
   hudSection: {
     marginBottom: 20,
@@ -347,6 +526,10 @@ const styles = StyleSheet.create({
   txAmount: {
     fontSize: 15,
     fontWeight: '800',
+  },
+  amountTrailing: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
   emptyCard: {
     backgroundColor: COLORS.bgSecondary,

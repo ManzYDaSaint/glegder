@@ -3,22 +3,25 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   FlatList,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 import { useAppDatabase } from '../../context/DatabaseContext';
 import { formatMWK } from '../../utils/format';
 import AddLoanModal from '../../components/AddLoanModal';
 import CollectDebtModal from '../../components/CollectDebtModal';
+import EditDebtModal from '../../components/EditDebtModal';
+import { CustomerDebtRecord } from '../../db';
 
 export default function LedgerScreen() {
-  const { debtSummary, activeDebts, addLoan, collectDebt } = useAppDatabase();
+  const { debtSummary, activeDebts, addLoan, collectDebt, removeCustomerDebt } = useAppDatabase();
   const [showAddLoanModal, setShowAddLoanModal] = useState(false);
   const [showCollectModal, setShowCollectModal] = useState(false);
+  const [selectedDebt, setSelectedDebt] = useState<CustomerDebtRecord | null>(null);
 
   const handleAddLoan = async (data: {
     customerName: string;
@@ -158,12 +161,14 @@ export default function LedgerScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContainer}
           renderItem={({ item }) => (
-            <View
+            <TouchableOpacity
               style={[
                 styles.debtCard,
                 item.isOverdue && styles.debtCardOverdue,
                 item.isDueToday && styles.debtCardDueToday,
               ]}
+              activeOpacity={0.8}
+              onPress={() => setSelectedDebt(item)}
             >
               <View style={styles.debtCardHeader}>
                 <View style={styles.customerInfo}>
@@ -195,7 +200,8 @@ export default function LedgerScreen() {
                 {/* Instant Collect Button for this debtor */}
                 <TouchableOpacity
                   style={styles.quickPayBtn}
-                  onPress={() => {
+                  onPress={(e) => {
+                    e.stopPropagation();
                     setShowCollectModal(true);
                   }}
                 >
@@ -203,7 +209,7 @@ export default function LedgerScreen() {
                   <Ionicons name="chevron-forward" size={14} color={COLORS.primaryLight} />
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.emptyCard}>
@@ -230,6 +236,20 @@ export default function LedgerScreen() {
         activeDebts={activeDebts}
         onClose={() => setShowCollectModal(false)}
         onSubmit={handleCollectDebt}
+      />
+
+      {/* View / Void Debt Modal */}
+      <EditDebtModal
+        visible={Boolean(selectedDebt)}
+        debt={selectedDebt}
+        onClose={() => setSelectedDebt(null)}
+        onDeleteCustomer={async (customerId) => {
+          try {
+            await removeCustomerDebt(customerId);
+          } catch {
+            Alert.alert('Error', 'Failed to delete customer debt');
+          }
+        }}
       />
     </SafeAreaView>
   );

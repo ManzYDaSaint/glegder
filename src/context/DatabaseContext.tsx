@@ -8,8 +8,11 @@ import {
   getActiveCustomerDebts,
   getUnsyncedRecords,
   insertTransaction as dbInsertTransaction,
+  updateTransaction,
+  deleteTransaction,
   insertLoan as dbInsertLoan,
   recordLoanRepayment as dbRecordRepayment,
+  deleteCustomerAndLoans,
   CustomerDebtRecord,
 } from '../db';
 import { CashSummary, DebtSummary, Transaction, Loan } from '../types';
@@ -32,6 +35,11 @@ interface DatabaseContextType {
     category: string;
     note?: string;
   }) => Promise<Transaction>;
+  editTransaction: (
+    id: string,
+    updates: { amount?: number; category?: string; note?: string }
+  ) => Promise<void>;
+  removeTransaction: (id: string) => Promise<void>;
   addLoan: (data: {
     customerName: string;
     customerPhone: string;
@@ -40,6 +48,7 @@ interface DatabaseContextType {
     note?: string;
   }) => Promise<Loan>;
   collectDebt: (customerId: string, amount: number, note?: string) => Promise<void>;
+  removeCustomerDebt: (customerId: string) => Promise<void>;
 }
 
 const defaultCash: CashSummary = {
@@ -72,8 +81,11 @@ const DatabaseContext = createContext<DatabaseContextType>({
   refreshData: async () => {},
   triggerSync: async () => {},
   addTransaction: async () => ({} as Transaction),
+  editTransaction: async () => {},
+  removeTransaction: async () => {},
   addLoan: async () => ({} as Loan),
   collectDebt: async () => {},
+  removeCustomerDebt: async () => {},
 });
 
 export const useAppDatabase = () => useContext(DatabaseContext);
@@ -100,18 +112,34 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const isSyncingRef = React.useRef(false);
+
   const triggerSync = useCallback(async () => {
-    if (isSyncing) return;
+    if (isSyncingRef.current) return;
     try {
+      const records = await getUnsyncedRecords();
+      const hasPending =
+        records.transactions.length > 0 ||
+        records.customers.length > 0 ||
+        records.loans.length > 0;
+
+      // Only toggle sync UI if there are actual pending records to push
+      if (!hasPending) {
+        setPendingSyncCount(0);
+        return;
+      }
+
+      isSyncingRef.current = true;
       setIsSyncing(true);
       await syncOfflineQueue();
       await checkPendingCount();
     } catch (err) {
       console.error('Sync failed:', err);
     } finally {
+      isSyncingRef.current = false;
       setIsSyncing(false);
     }
-  }, [isSyncing, checkPendingCount]);
+  }, [checkPendingCount]);
 
   const refreshData = useCallback(async () => {
     try {
@@ -146,14 +174,19 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     init();
   }, [refreshData]);
 
-  // Network listener: detect connectivity & trigger auto-sync when online
+  // Network listener: only trigger sync on transition from offline to online
+  const prevOnlineRef = React.useRef<boolean | null>(null);
+
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
       const online = Boolean(state.isConnected && state.isInternetReachable !== false);
+      const wasOffline = prevOnlineRef.current === false;
+      prevOnlineRef.current = online;
+
       setIsOnline(online);
 
-      // If network is restored, automatically flush unsynced offline records to cloud
-      if (online) {
+      // Only trigger sync if returning online from an offline state
+      if (online && wasOffline) {
         triggerSync();
       }
     });
@@ -175,6 +208,25 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
       triggerSync();
     }
     return res;
+  };
+
+  const editTransaction = async (
+    id: string,
+    updates: { amount?: number; category?: string; note?: string }
+  ) => {
+    await updateTransaction(id, updates);
+    await refreshData();
+    if (isOnline) {
+      triggerSync();
+    }
+  };
+
+  const removeTransaction = async (id: string) => {
+    await deleteTransaction(id);
+    await refreshData();
+    if (isOnline) {
+      triggerSync();
+    }
   };
 
   const addLoan = async (data: {
@@ -203,6 +255,14 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const removeCustomerDebt = async (customerId: string) => {
+    await deleteCustomerAndLoans(customerId);
+    await refreshData();
+    if (isOnline) {
+      triggerSync();
+    }
+  };
+
   return (
     <DatabaseContext.Provider
       value={{
@@ -217,8 +277,11 @@ export function DatabaseProvider({ children }: { children: React.ReactNode }) {
         refreshData,
         triggerSync,
         addTransaction,
+        editTransaction,
+        removeTransaction,
         addLoan,
         collectDebt,
+        removeCustomerDebt,
       }}
     >
       {children}

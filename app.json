@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.nyangazie.glegder"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,6 +38,17 @@
         {}
       ],
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "34be7ded-978a-4e37-a6c6-a85c45b52e3b"
+      }
+    },
+    "owner": "nyangazie"
   }
 }

@@ -7,7 +7,8 @@ import { useAppDatabase } from '../context/DatabaseContext';
 export default function SyncStatusBadge() {
   const { isOnline, isSyncing, pendingSyncCount, triggerSync } = useAppDatabase();
 
-  if (isSyncing) {
+  // If currently pushing pending items
+  if (isSyncing && pendingSyncCount > 0) {
     return (
       <View style={[styles.badge, styles.syncingBadge]}>
         <ActivityIndicator size="small" color={COLORS.primary} style={{ marginRight: 6 }} />
@@ -16,6 +17,7 @@ export default function SyncStatusBadge() {
     );
   }
 
+  // Connected to internet
   if (isOnline) {
     return (
       <TouchableOpacity
@@ -25,7 +27,7 @@ export default function SyncStatusBadge() {
       >
         <View style={styles.onlineDot} />
         <Text style={styles.onlineText}>
-          {pendingSyncCount > 0 ? `${pendingSyncCount} Pending` : 'Cloud Synced'}
+          {pendingSyncCount > 0 ? `${pendingSyncCount} Pending` : 'Synced'}
         </Text>
       </TouchableOpacity>
     );
@@ -36,7 +38,7 @@ export default function SyncStatusBadge() {
     <View style={[styles.badge, styles.offlineBadge]}>
       <Ionicons name="cloud-offline-outline" size={13} color={COLORS.warning} style={{ marginRight: 5 }} />
       <Text style={styles.offlineText}>
-        {pendingSyncCount > 0 ? `${pendingSyncCount} Saved Offline` : 'Offline Mode'}
+        {pendingSyncCount > 0 ? `${pendingSyncCount} Offline` : 'Offline'}
       </Text>
     </View>
   );

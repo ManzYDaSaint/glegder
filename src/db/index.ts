@@ -81,13 +81,25 @@ export async function insertTransaction(tx: Omit<Transaction, 'id' | 'created_at
   };
 }
 
-export async function getRecentTransactions(limit = 20): Promise<Transaction[]> {
+export async function updateTransaction(
+  id: string,
+  updates: { amount?: number; category?: string; note?: string }
+): Promise<void> {
   const db = await getDatabase();
-  const rows = await db.getAllAsync<Transaction>(
-    `SELECT * FROM transactions ORDER BY datetime(created_at) DESC LIMIT ?`,
-    [limit]
+  await db.runAsync(
+    `UPDATE transactions 
+     SET amount = COALESCE(?, amount),
+         category = COALESCE(?, category),
+         note = COALESCE(?, note),
+         synced = 0
+     WHERE id = ?`,
+    [updates.amount ?? null, updates.category ?? null, updates.note ?? null, id]
   );
-  return rows;
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(`DELETE FROM transactions WHERE id = ?`, [id]);
 }
 
 export async function getCashSummary(): Promise<CashSummary> {
@@ -130,9 +142,56 @@ export async function getCashSummary(): Promise<CashSummary> {
   };
 }
 
-// ==========================================
-// CUSTOMERS & LOANS (LEDGER HUD)
-// ==========================================
+export async function getRecentTransactions(limit = 20): Promise<Transaction[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<Transaction>(
+    `SELECT * FROM transactions ORDER BY datetime(created_at) DESC LIMIT ?`,
+    [limit]
+  );
+  return rows;
+}
+
+export async function updateCustomer(
+  id: string,
+  updates: { name?: string; phone?: string }
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE customers 
+     SET name = COALESCE(?, name),
+         phone = COALESCE(?, phone),
+         synced = 0
+     WHERE id = ?`,
+    [updates.name ?? null, updates.phone ?? null, id]
+  );
+}
+
+export async function deleteCustomerAndLoans(customerId: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(`DELETE FROM loans WHERE customer_id = ?`, [customerId]);
+  await db.runAsync(`DELETE FROM customers WHERE id = ?`, [customerId]);
+}
+
+export async function updateLoan(
+  id: string,
+  updates: { amount?: number; due_date?: string; note?: string }
+): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(
+    `UPDATE loans
+     SET amount = COALESCE(?, amount),
+         due_date = COALESCE(?, due_date),
+         note = COALESCE(?, note),
+         synced = 0
+     WHERE id = ?`,
+    [updates.amount ?? null, updates.due_date ?? null, updates.note ?? null, id]
+  );
+}
+
+export async function deleteLoan(id: string): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(`DELETE FROM loans WHERE id = ?`, [id]);
+}
 
 export async function getOrCreateCustomer(name: string, phone: string): Promise<Customer> {
   const db = await getDatabase();
