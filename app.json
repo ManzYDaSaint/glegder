@@ -29,7 +29,8 @@
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 1000
+      "fallbackToCacheTimeout": 1000,
+      "url": "https://u.expo.dev/34be7ded-978a-4e37-a6c6-a85c45b52e3b"
     },
     "plugins": [
       "expo-router",
