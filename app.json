@@ -3,9 +3,10 @@
     "name": "glegder",
     "slug": "glegder",
     "version": "1.0.0",
+    "scheme": "glegder",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -20,6 +21,22 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 1000
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-updates",
+        {}
+      ],
+      "expo-font"
+    ]
   }
 }
