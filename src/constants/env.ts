@@ -5,4 +5,7 @@ export const ENV = {
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
   appEnv: process.env.EXPO_PUBLIC_APP_ENV || 'development',
   defaultCurrency: process.env.EXPO_PUBLIC_DEFAULT_CURRENCY || 'MWK',
+  otpSmsApiKey: process.env.EXPO_PUBLIC_OTP_SMS_API_KEY || '',
+  telcomwBaseUrl: process.env.EXPO_PUBLIC_TELCOMW_BASE_URL || 'https://telcomw.com',
+  telcomwSenderId: process.env.EXPO_PUBLIC_TELCOMW_SENDER_ID || 'Glegder',
 };

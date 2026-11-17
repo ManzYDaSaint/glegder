@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { Transaction, Customer, Loan, CashSummary, DebtSummary } from '../types';
+import { Transaction, Customer, Loan, CashSummary, DebtSummary, ShopProfile } from '../types';
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
@@ -14,8 +14,17 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
 
+    CREATE TABLE IF NOT EXISTS shop_profile (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      currency TEXT DEFAULT 'MWK',
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY NOT NULL,
+      shop_id TEXT,
       type TEXT NOT NULL,
       amount REAL NOT NULL,
       category TEXT NOT NULL,
@@ -26,6 +35,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY NOT NULL,
+      shop_id TEXT,
       name TEXT NOT NULL,
       phone TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -34,6 +44,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
     CREATE TABLE IF NOT EXISTS loans (
       id TEXT PRIMARY KEY NOT NULL,
+      shop_id TEXT,
       customer_id TEXT NOT NULL,
       type TEXT NOT NULL,
       amount REAL NOT NULL,
@@ -49,6 +60,11 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     CREATE INDEX IF NOT EXISTS idx_loans_customer ON loans (customer_id);
     CREATE INDEX IF NOT EXISTS idx_loans_due_date ON loans (due_date);
   `);
+
+  // Ensure shop_id column exists on upgraded tables
+  try { await db.execAsync(`ALTER TABLE transactions ADD COLUMN shop_id TEXT;`); } catch {}
+  try { await db.execAsync(`ALTER TABLE customers ADD COLUMN shop_id TEXT;`); } catch {}
+  try { await db.execAsync(`ALTER TABLE loans ADD COLUMN shop_id TEXT;`); } catch {}
 
   dbInstance = db;
   return db;
@@ -389,4 +405,42 @@ export async function markAsSynced(table: 'transactions' | 'customers' | 'loans'
   const db = await getDatabase();
   const placeholders = ids.map(() => '?').join(',');
   await db.runAsync(`UPDATE ${table} SET synced = 1 WHERE id IN (${placeholders})`, ids);
+}
+
+// ==========================================
+// SHOP PROFILE & ACCOUNT MANAGEMENT
+// ==========================================
+
+export async function getShopProfile(): Promise<ShopProfile | null> {
+  const db = await getDatabase();
+  return db.getFirstAsync<ShopProfile>(`SELECT * FROM shop_profile LIMIT 1`);
+}
+
+export async function saveShopProfile(profile: ShopProfile): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync(`DELETE FROM shop_profile`);
+  await db.runAsync(
+    `INSERT INTO shop_profile (id, name, phone, currency, created_at) VALUES (?, ?, ?, ?, ?)`,
+    [profile.id, profile.name, profile.phone, profile.currency || 'MWK', profile.created_at]
+  );
+}
+
+export async function updateShopProfile(updates: Partial<Omit<ShopProfile, 'id' | 'created_at'>>): Promise<void> {
+  const db = await getDatabase();
+  const current = await getShopProfile();
+  if (!current) return;
+  await db.runAsync(
+    `UPDATE shop_profile SET name = COALESCE(?, name), phone = COALESCE(?, phone), currency = COALESCE(?, currency) WHERE id = ?`,
+    [updates.name ?? null, updates.phone ?? null, updates.currency ?? null, current.id]
+  );
+}
+
+export async function clearAllLocalData(): Promise<void> {
+  const db = await getDatabase();
+  await db.execAsync(`
+    DELETE FROM transactions;
+    DELETE FROM loans;
+    DELETE FROM customers;
+    DELETE FROM shop_profile;
+  `);
 }

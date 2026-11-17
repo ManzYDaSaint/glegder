@@ -1,7 +1,16 @@
 export type TransactionType = 'IN' | 'OUT';
 
+export interface ShopProfile {
+  id: string;
+  name: string;
+  phone: string;
+  currency: string;
+  created_at: string;
+}
+
 export interface Transaction {
   id: string;
+  shop_id?: string;
   type: TransactionType;
   amount: number;
   category: string;
@@ -12,6 +21,7 @@ export interface Transaction {
 
 export interface Customer {
   id: string;
+  shop_id?: string;
   name: string;
   phone: string;
   created_at: string;
@@ -23,6 +33,7 @@ export type LoanStatus = 'PENDING' | 'PAID' | 'OVERDUE';
 
 export interface Loan {
   id: string;
+  shop_id?: string;
   customer_id: string;
   customer_name?: string;
   customer_phone?: string;

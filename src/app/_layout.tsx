@@ -6,8 +6,10 @@ import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import SplashScreen from '../components/SplashScreen';
 import OnboardingScreen from '../components/OnboardingScreen';
+import PhoneAuthScreen from '../components/PhoneAuthScreen';
 import { DatabaseProvider } from '../context/DatabaseContext';
 import { useAutoUpdates } from '../hooks/useAutoUpdates';
+import { getShopProfile } from '../db';
 
 const HAS_ONBOARDED_KEY = '@glegder_has_onboarded_v1';
 
@@ -15,6 +17,7 @@ export default function RootLayout() {
   useAutoUpdates();
   const [showSplash, setShowSplash] = useState(true);
   const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
+  const [authStep, setAuthStep] = useState<'SLIDES' | 'PHONE_AUTH'>('SLIDES');
 
   useEffect(() => {
     checkOnboardingStatus();
@@ -23,13 +26,15 @@ export default function RootLayout() {
   const checkOnboardingStatus = async () => {
     try {
       const value = await AsyncStorage.getItem(HAS_ONBOARDED_KEY);
-      setHasOnboarded(value === 'true');
+      const profile = await getShopProfile();
+      // Only considered fully onboarded if flag is true AND shop profile exists
+      setHasOnboarded(value === 'true' && profile !== null);
     } catch {
       setHasOnboarded(false);
     }
   };
 
-  const handleFinishOnboarding = async () => {
+  const handleFinishAuth = async () => {
     try {
       await AsyncStorage.setItem(HAS_ONBOARDED_KEY, 'true');
       setHasOnboarded(true);
@@ -57,12 +62,24 @@ export default function RootLayout() {
     );
   }
 
-  // 3. Onboarding Screen
+  // 3. Onboarding & Phone Auth Flow
   if (!hasOnboarded) {
+    if (authStep === 'SLIDES') {
+      return (
+        <>
+          <StatusBar style="light" />
+          <OnboardingScreen onComplete={() => setAuthStep('PHONE_AUTH')} />
+        </>
+      );
+    }
+
     return (
       <>
         <StatusBar style="light" />
-        <OnboardingScreen onComplete={handleFinishOnboarding} />
+        <PhoneAuthScreen
+          onSuccess={handleFinishAuth}
+          onBack={() => setAuthStep('SLIDES')}
+        />
       </>
     );
   }

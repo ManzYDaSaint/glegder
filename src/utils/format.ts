@@ -4,6 +4,12 @@ export function formatMWK(amount: number): string {
   return `MWK ${formatted}`;
 }
 
+export function formatCurrency(amount: number, currency: string = 'MWK'): string {
+  const rounded = Math.round(amount);
+  const formatted = rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${currency} ${formatted}`;
+}
+
 export function formatShortDate(isoString: string): string {
   const date = new Date(isoString);
   const today = new Date();
