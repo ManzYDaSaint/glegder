@@ -41,7 +41,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="ledger"
         options={{
-          title: 'Ledger HUD',
+          title: 'Ledger',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons
               name={focused ? 'book' : 'book-outline'}

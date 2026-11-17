@@ -7,6 +7,7 @@ import {
   FlatList,
   TouchableOpacity,
   Animated,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,7 +86,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingProps) {
       {/* Top Header */}
       <View style={styles.header}>
         <View style={styles.brandRow}>
-          <View style={styles.brandDot} />
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
           <Text style={styles.brandName}>Glegder</Text>
         </View>
         {currentIndex < SLIDES.length - 1 && (
@@ -176,11 +181,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  brandDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.primary,
+  brandLogo: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
     marginRight: 8,
   },
   brandName: {

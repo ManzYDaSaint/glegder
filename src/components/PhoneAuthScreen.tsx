@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -168,6 +169,14 @@ export default function PhoneAuthScreen({ onSuccess, onBack }: PhoneAuthScreenPr
 
           {step === 'ENTER_PHONE' ? (
             <View style={styles.card}>
+              <View style={styles.cardBrandRow}>
+                <Image
+                  source={require('../../assets/icon.png')}
+                  style={styles.cardBrandLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.cardBrandTitle}>Glegder</Text>
+              </View>
               <Text style={styles.heading}>Connect Your Shop</Text>
               <Text style={styles.subtitle}>
                 Register your business phone to link your offline books with secure cloud backup.
@@ -380,6 +389,23 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+  cardBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  cardBrandLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+  },
+  cardBrandTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    letterSpacing: 0.8,
   },
   heading: {
     fontSize: 24,

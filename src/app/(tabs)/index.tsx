@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,9 +53,16 @@ export default function DailyCashScreen() {
     <SafeAreaView style={styles.container}>
       {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>MY SHOP TILL</Text>
-          <Text style={styles.headerTitle}>Daily Cash</Text>
+        <View style={styles.headerBrandRow}>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.headerAppLogo}
+            resizeMode="contain"
+          />
+          <View>
+            <Text style={styles.headerSubtitle}>MY SHOP TILL</Text>
+            <Text style={styles.headerTitle}>Daily Cash</Text>
+          </View>
         </View>
         <SyncStatusBadge />
       </View>
@@ -267,6 +275,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
     marginBottom: 18,
+  },
+  headerBrandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerAppLogo: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
   },
   headerSubtitle: {
     color: COLORS.primary,
